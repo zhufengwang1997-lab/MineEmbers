@@ -11,6 +11,7 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)   # only UNITY_INTERFACE_EXPORT symbols are visible
+set(CMAKE_OBJCXX_VISIBILITY_PRESET hidden)
 
 set(OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../Packages/com.zfw.gpucaps/Plugins")
 

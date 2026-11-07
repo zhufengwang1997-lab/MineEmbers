@@ -1,0 +1,6 @@
+{
+  "name": "Zfw.PerfRunner",
+  "rootNamespace": "Zfw.PerfRunner",
+  "references": ["Zfw.GpuCaps"],
+  "autoReferenced": true
+}
