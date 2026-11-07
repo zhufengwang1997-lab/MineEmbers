@@ -1,0 +1,6 @@
+{
+  "name": "Zfw.QualityTiers",
+  "rootNamespace": "Zfw.QualityTiers",
+  "references": ["Zfw.GpuCaps", "Unity.RenderPipelines.Universal.Runtime", "Unity.RenderPipelines.Core.Runtime"],
+  "autoReferenced": true
+}
