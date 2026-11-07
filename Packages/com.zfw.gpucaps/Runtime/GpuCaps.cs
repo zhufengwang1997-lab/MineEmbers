@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Zfw.GpuCaps
 {
@@ -89,7 +90,8 @@ namespace Zfw.GpuCaps
         public static string ShortDeviceName(string name)
         {
             if (string.IsNullOrEmpty(name)) return "unknown";
-            string s = Regex.Replace(name, @"\b(NVIDIA|GeForce|AMD|Radeon|Intel\(R\)|Graphics)\b|\(TM\)|\(R\)", "", RegexOptions.IgnoreCase);
+            string s = Regex.Replace(name, @"\(TM\)|\(R\)", "", RegexOptions.IgnoreCase);
+            s = Regex.Replace(s, @"\b(NVIDIA|GeForce|AMD|Radeon|Intel|Graphics)\b", "", RegexOptions.IgnoreCase);
             s = Regex.Replace(s, "[^A-Za-z0-9]", "");
             return s.Length > 0 ? s : "unknown";
         }

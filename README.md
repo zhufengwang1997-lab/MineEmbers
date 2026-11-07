@@ -45,3 +45,17 @@ python3 "Packages/com.zfw.perfrunner/Tools~/screenshot_diff.py" shots_dx12 shots
 | `-caps-out <路径>`、`-caps-only` | 能力报告位置；只采集能力后退出 |
 | `-perfrun [-perf-out <路径>] [-perf-seconds 20]` | 跑图模式 |
 | `-shots <目录>` | 15 个固定机位截图后退出 |
+
+## 工程配置即代码
+
+`Assets/Editor/ProjectSetup.cs` 生成 4 档 URP Asset / TierSettings / Quality 级别，并设置图形 API（Win: D3D12 + Vulkan，Mac: Metal）与 Frame Timing Stats。改参数后重跑：
+
+```bash
+/Applications/Unity/Hub/Editor/6000.3.28f1/Unity.app/Contents/MacOS/Unity -batchmode -quit -projectPath . -executeMethod MineEmbers.EditorTools.ProjectSetup.Run
+```
+
+EditMode 测试（不加 `-nographics`，才会有真实的图形设备让插件回答）：
+
+```bash
+/Applications/Unity/Hub/Editor/6000.3.28f1/Unity.app/Contents/MacOS/Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testResults Logs/editmode.xml
+```
