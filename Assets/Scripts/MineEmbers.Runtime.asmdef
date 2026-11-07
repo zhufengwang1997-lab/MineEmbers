@@ -1,0 +1,7 @@
+{
+  "name": "MineEmbers.Runtime",
+  "rootNamespace": "MineEmbers",
+  "references": ["Zfw.GpuCaps", "Zfw.QualityTiers", "Zfw.PerfRunner",
+                 "Unity.RenderPipelines.Universal.Runtime", "Unity.RenderPipelines.Core.Runtime", "Unity.InputSystem"],
+  "autoReferenced": true
+}

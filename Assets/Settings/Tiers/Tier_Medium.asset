@@ -15,7 +15,7 @@ MonoBehaviour:
   tier: 1
   pipeline: {fileID: 11400000, guid: 9ca11013ee0cf47498ab4e426ee119bc, type: 2}
   maxShadowedPointLights: 4
-  shadowResolution: 2048
+  shadowResolution: 256
   particleDensity: 0.7
   softParticles: 1
   bloom: 1

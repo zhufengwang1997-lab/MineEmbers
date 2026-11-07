@@ -28,3 +28,5 @@ NativePlugins/**/build/
 # Tool output
 tools/__pycache__/
 out/
+Assets/Resources/build_commit.txt*
+Builds/

@@ -61,7 +61,7 @@ namespace Zfw.QualityTiers
             Save();
         }
 
-        internal static void SetFromCommandLine(Tier t)
+        public static void SetCommandLine(Tier t)
         {
             Mode = SelectionMode.CommandLine;
             Set(t, manual: false);

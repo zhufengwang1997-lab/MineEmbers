@@ -22,17 +22,21 @@ namespace MineEmbers.EditorTools
         // FR-QT-01 initial values. Change here, re-run, and note the reason in docs/perf.
         struct TierSpec
         {
-            public Tier tier; public float renderScale; public int msaa; public int shadowRes;
+            public Tier tier; public float renderScale; public int msaa;
+            /// <summary>Additional-light shadow atlas size. Must hold shadowedLights x 6 cube faces x slice^2.</summary>
+            public int shadowRes;
+            /// <summary>Per-face resolution of one point-light shadow (all three URP light tiers set to this).</summary>
+            public int slice;
             public int shadowedLights; public float particles; public bool softParticles;
             public bool bloom; public int bloomIter; public bool fog; public bool heatHaze; public bool reflection;
         }
 
         static readonly TierSpec[] Specs =
         {
-            new TierSpec { tier = Tier.Low,    renderScale = 0.8f, msaa = 1, shadowRes = 1024, shadowedLights = 2,  particles = 0.4f, softParticles = false, bloom = false, bloomIter = 0, fog = false, heatHaze = false, reflection = false },
-            new TierSpec { tier = Tier.Medium, renderScale = 0.9f, msaa = 2, shadowRes = 2048, shadowedLights = 4,  particles = 0.7f, softParticles = true,  bloom = true,  bloomIter = 3, fog = false, heatHaze = false, reflection = false },
-            new TierSpec { tier = Tier.High,   renderScale = 1.0f, msaa = 4, shadowRes = 2048, shadowedLights = 8,  particles = 1.0f, softParticles = true,  bloom = true,  bloomIter = 5, fog = true,  heatHaze = true,  reflection = false },
-            new TierSpec { tier = Tier.Ultra,  renderScale = 1.0f, msaa = 4, shadowRes = 4096, shadowedLights = 16, particles = 1.0f, softParticles = true,  bloom = true,  bloomIter = 6, fog = true,  heatHaze = true,  reflection = true  },
+            new TierSpec { tier = Tier.Low,    renderScale = 0.8f, msaa = 1, shadowRes = 1024, slice = 256, shadowedLights = 2,  particles = 0.4f, softParticles = false, bloom = false, bloomIter = 0, fog = false, heatHaze = false, reflection = false },
+            new TierSpec { tier = Tier.Medium, renderScale = 0.9f, msaa = 2, shadowRes = 2048, slice = 256, shadowedLights = 4,  particles = 0.7f, softParticles = true,  bloom = true,  bloomIter = 3, fog = false, heatHaze = false, reflection = false },
+            new TierSpec { tier = Tier.High,   renderScale = 1.0f, msaa = 4, shadowRes = 4096, slice = 512, shadowedLights = 8,  particles = 1.0f, softParticles = true,  bloom = true,  bloomIter = 5, fog = true,  heatHaze = true,  reflection = false },
+            new TierSpec { tier = Tier.Ultra,  renderScale = 1.0f, msaa = 4, shadowRes = 8192, slice = 512, shadowedLights = 16, particles = 1.0f, softParticles = true,  bloom = true,  bloomIter = 6, fog = true,  heatHaze = true,  reflection = true  },
         };
 
         [MenuItem("MineEmbers/Project Setup")]
@@ -53,6 +57,8 @@ namespace MineEmbers.EditorTools
         {
             PlayerSettings.companyName = "zfw";
             PlayerSettings.productName = "MineEmbers";
+            // Also names the Metal shader cache folder ($DARWIN_USER_CACHE_DIR/<id>/com.apple.metal).
+            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Standalone, "com.zfw.mineembers");
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.runInBackground = true;          // perf runs must not throttle when unfocused
             PlayerSettings.enableFrameTimingStats = true;   // FrameTimingManager gpuFrameTime (FR-PR-02)
@@ -81,6 +87,11 @@ namespace MineEmbers.EditorTools
                 so.FindProperty("m_MSAA").intValue = s.msaa;
                 so.FindProperty("m_MainLightShadowmapResolution").intValue = s.shadowRes;
                 so.FindProperty("m_AdditionalLightsShadowmapResolution").intValue = s.shadowRes;
+                // CASE-05: point-light shadows are 6 cube faces each; the atlas must fit lights x 6 x slice^2
+                // or URP silently downscales every slice (High ended up blurrier than Medium).
+                foreach (var tierName in new[] { "Low", "Medium", "High" })
+                    so.FindProperty($"m_AdditionalLightsShadowResolutionTier{tierName}").intValue = s.slice;
+                Debug.Assert(s.shadowedLights * 6 * s.slice * s.slice <= s.shadowRes * s.shadowRes, $"{s.tier}: shadow atlas too small");
                 so.FindProperty("m_AdditionalLightShadowsSupported").boolValue = true;
                 // Soft particles sample the depth texture; Low skips the depth copy entirely.
                 so.FindProperty("m_RequireDepthTexture").boolValue = s.softParticles;
@@ -109,7 +120,7 @@ namespace MineEmbers.EditorTools
                 t.tier = s.tier;
                 t.pipeline = assets[(int)s.tier];
                 t.maxShadowedPointLights = s.shadowedLights;
-                t.shadowResolution = s.shadowRes;
+                t.shadowResolution = s.slice;
                 t.particleDensity = s.particles;
                 t.softParticles = s.softParticles;
                 t.bloom = s.bloom;
@@ -147,6 +158,9 @@ namespace MineEmbers.EditorTools
                 e.FindPropertyRelative("customRenderPipeline").objectReferenceValue = assets[i];
                 e.FindPropertyRelative("vSyncCount").intValue = 0;
                 e.FindPropertyRelative("softParticles").boolValue = Specs[i].softParticles;
+                // Required for LakeReflection: realtime probes are skipped entirely when this is off
+                // (Low..High render the probe once, Ultra re-renders it time-sliced).
+                e.FindPropertyRelative("realtimeReflectionProbes").boolValue = true;
             }
             so.FindProperty("m_CurrentQuality").intValue = (int)Tier.High;
             var perPlatform = so.FindProperty("m_PerPlatformDefaultQuality");

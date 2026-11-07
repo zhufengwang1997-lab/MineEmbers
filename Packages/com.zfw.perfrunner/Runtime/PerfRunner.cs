@@ -73,6 +73,19 @@ namespace Zfw.PerfRunner
             sb.Append("frame,zone,cpu_ms,gpu_ms,draw_calls,setpass_calls,gfx_mem_mb\n");
             int frame = 0;
 
+            // Discard the frame that contains scene load / PSO warmup: its ProfilerRecorder counts are
+            // cumulative since startup and FrameTimingManager would report its ~1 s CPU time again a few
+            // frames later (CASE-07). Its timing only arrives once the GPU has finished it (frames in
+            // flight), so keep discarding until that has happened; every timing seen so far is "used".
+            ulong lastStamp = 0;
+            bool timingAvailable = false;
+            for (int i = 0; i < Mathf.Max(QualitySettings.maxQueuedFrames, 2) + 4; i++)
+            {
+                yield return null;
+                FrameTimingManager.CaptureFrameTimings();
+                if (FrameTimingManager.GetLatestTimings(1, _ft) > 0) { lastStamp = _ft[0].frameStartTimestamp; timingAvailable = true; }
+            }
+
             foreach (var z in zones)
             {
                 // Warmup: sit at the zone start so streaming, shader compiles and particle spin-up settle.
@@ -80,6 +93,7 @@ namespace Zfw.PerfRunner
                 {
                     z.Evaluate(0, out var p, out var q); cam.transform.SetPositionAndRotation(p, q);
                     FrameTimingManager.CaptureFrameTimings();
+                    if (FrameTimingManager.GetLatestTimings(1, _ft) > 0) lastStamp = _ft[0].frameStartTimestamp;
                     yield return null;
                 }
                 for (float t = 0; t < secondsPerZone; t += Time.unscaledDeltaTime)
@@ -87,14 +101,19 @@ namespace Zfw.PerfRunner
                     z.Evaluate(t / secondsPerZone, out var p, out var q); cam.transform.SetPositionAndRotation(p, q);
                     FrameTimingManager.CaptureFrameTimings();
                     // Timings lag a few frames behind (the GPU finishes later); GetLatestTimings returns
-                    // the newest completed frame, which is fine for per-zone statistics.
+                    // the newest completed frame, which is fine for per-zone statistics. The same completed
+                    // frame can be returned on several calls, so use each timestamp once.
                     string cpu = "", gpu = "";
-                    if (FrameTimingManager.GetLatestTimings(1, _ft) > 0)
+                    if (FrameTimingManager.GetLatestTimings(1, _ft) > 0 && _ft[0].frameStartTimestamp > lastStamp)
                     {
+                        lastStamp = _ft[0].frameStartTimestamp;
                         cpu = F(_ft[0].cpuFrameTime);
                         if (_ft[0].gpuFrameTime > 0) gpu = F(_ft[0].gpuFrameTime);
                     }
-                    if (cpu.Length == 0) cpu = F(Time.unscaledDeltaTime * 1000.0);
+                    // No new completed frame this time: leave the row empty rather than substituting
+                    // unscaledDeltaTime (that is the previous frame, which FrameTimingManager delivers
+                    // again later -> counted twice). Fallback only where frame timing is unsupported.
+                    if (cpu.Length == 0 && !timingAvailable) cpu = F(Time.unscaledDeltaTime * 1000.0);
                     sb.Append(frame++).Append(',').Append(z.zoneId).Append(',').Append(cpu).Append(',').Append(gpu).Append(',')
                       .Append(_draws.LastValue).Append(',').Append(_setpass.LastValue).Append(',')
                       .Append((_gfxMem.LastValue / (1024 * 1024)).ToString(CultureInfo.InvariantCulture)).Append('\n');

@@ -44,7 +44,24 @@ python3 "Packages/com.zfw.perfrunner/Tools~/screenshot_diff.py" shots_dx12 shots
 | `-tier=<low\|medium\|high\|ultra>` | 跳过自动选档 |
 | `-caps-out <路径>`、`-caps-only` | 能力报告位置；只采集能力后退出 |
 | `-perfrun [-perf-out <路径>] [-perf-seconds 20]` | 跑图模式 |
-| `-shots <目录>` | 15 个固定机位截图后退出 |
+| `-shots <目录>` | 15 个固定机位截图后退出（画面确定：火光冻结、粒子固定种子、热浪固定时间） |
+| `-perf-warmup <秒>` | 跑图前的预热时长（冷启动实验用 0） |
+| `-gsc-record` | Development 包录制 PSO（GraphicsStateCollection），退出时存到 persistentDataPath |
+
+运行中：`Esc` 设置菜单（切档、重新检测、API/GPU/驱动/兼容案例），`F3` 性能 HUD。
+
+## 构建与测量（Mac）
+
+```bash
+tools/unity.sh MineEmbers.EditorTools.LevelBuilder.Build          # 重新生成白模关卡 Assets/Scenes/Mine.unity
+tools/unity.sh MineEmbers.EditorTools.BuildScript.BuildMac [-dev]  # -> Builds/Mac/MineEmbers.app
+tools/unity.sh MineEmbers.EditorTools.BuildScript.BuildWindows     # Mono 交叉编译 -> Builds/Windows/
+tools/run_mac_suite.sh                                             # 冷缓存预热实验 + 4 档性能
+python3 tools/perf_summary.py out/perf/*.csv                       # 按 设备/API/档位/区域 汇总成 Markdown 表
+python3 tools/contact_sheet.py out/shots -o sheet.png              # 15 个机位拼成一张总览图
+```
+
+`tools/unity.sh` 会在非编译错误时自动重试一次（见 CASE-03）。Windows 测试机流程见 [docs/windows.md](docs/windows.md)，性能数据见 [docs/perf/README.md](docs/perf/README.md)。
 
 ## 工程配置即代码
 
