@@ -1,12 +1,12 @@
 {
   "name": "com.zfw.qualitytiers",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "QualityTiers",
   "description": "Four URP quality tiers with capability-capped benchmark auto-selection and a compatibility override table.",
   "unity": "6000.3",
   "author": { "name": "zfw" },
   "dependencies": {
-    "com.zfw.gpucaps": "0.1.0",
+    "com.zfw.gpucaps": "0.2.0",
     "com.unity.render-pipelines.universal": "17.3.0"
   }
 }

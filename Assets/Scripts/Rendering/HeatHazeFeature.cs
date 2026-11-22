@@ -54,7 +54,8 @@ namespace MineEmbers.Rendering
         {
             var s = QualityTiers.Settings;
             // No catalog (e.g. editor without bootstrap) -> keep the effect visible for authoring.
-            return (!s || s.heatHaze) && !QualityTiers.IsDisabled("HeatHaze");
+            var x = s ? s.Get<MineTierExtension>() : null;
+            return (x == null || x.heatHaze) && !QualityTiers.IsDisabled("HeatHaze");
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)

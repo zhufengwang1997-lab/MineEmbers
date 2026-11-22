@@ -31,7 +31,8 @@ namespace MineEmbers.Rendering
         void Apply(Tier _)
         {
             var s = QualityTiers.Settings;
-            _realtime = s && s.lakeReflection && !QualityTiers.IsDisabled("LakeReflection");
+            var x = s ? s.Get<MineTierExtension>() : null;
+            _realtime = x != null && x.lakeReflection && !QualityTiers.IsDisabled("LakeReflection");
             _probe.resolution = _realtime ? 256 : 128;
             _renderId = _probe.RenderProbe();
         }

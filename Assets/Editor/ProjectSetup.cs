@@ -4,6 +4,7 @@ using UnityEditor.Build;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using MineEmbers.Rendering;
 using Zfw.QualityTiers;
 
 namespace MineEmbers.EditorTools
@@ -126,8 +127,9 @@ namespace MineEmbers.EditorTools
                 t.bloom = s.bloom;
                 t.bloomIterations = s.bloomIter;
                 t.fog = s.fog;
-                t.heatHaze = s.heatHaze;
-                t.lakeReflection = s.reflection;
+                var mine = t.GetOrAdd<MineTierExtension>();
+                mine.heatHaze = s.heatHaze;
+                mine.lakeReflection = s.reflection;
                 EditorUtility.SetDirty(t);
                 switch (s.tier)
                 {

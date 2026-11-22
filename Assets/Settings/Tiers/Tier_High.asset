@@ -21,5 +21,13 @@ MonoBehaviour:
   bloom: 1
   bloomIterations: 5
   fog: 1
-  heatHaze: 1
-  lakeReflection: 0
+  extensions:
+  - rid: 8958700299457134593
+  references:
+    version: 2
+    RefIds:
+    - rid: 8958700299457134593
+      type: {class: MineTierExtension, ns: MineEmbers.Rendering, asm: MineEmbers.Runtime}
+      data:
+        heatHaze: 1
+        lakeReflection: 0
