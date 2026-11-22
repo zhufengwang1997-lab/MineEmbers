@@ -9,6 +9,7 @@
 | [CASE-05](CASE-05-point-shadow-atlas-overflow.md) | 点光源阴影图集溢出，High 反而比 Medium 糊 | 档位设计 |
 | [CASE-06](CASE-06-gsc-trace-release-build.md) | GSC 在 Release 包里"录制成功"却是空的 | 新 API 验收 |
 | [CASE-07](CASE-07-frame-timing-double-count.md) | 帧时间延迟到达被记两次，启动帧冒充 1 秒卡顿 | 测量工具 |
+| [CASE-08](CASE-08-lake-hitch-and-runner-garbage.md) | 地下湖偶发卡顿的排除法；顺带把每次运行的 GC 从 38 次降到 5 次 | 测量工具 / CPU |
 
 每个案例一个文件：`CASE-NN-<短名>.md`，模板如下。`compat_overrides.json` 的每条规则都必须引用一个案例编号。
 

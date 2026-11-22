@@ -1,6 +1,6 @@
 {
   "name": "com.zfw.perfrunner",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "displayName": "PerfRunner",
   "description": "Command-line fly-through benchmark that records per-frame CPU/GPU timings to CSV, plus compare/diff tools.",
   "unity": "6000.3",

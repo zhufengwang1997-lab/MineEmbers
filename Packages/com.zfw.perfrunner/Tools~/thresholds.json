@@ -1,0 +1,11 @@
+{
+  "_doc": "compare.py regression thresholds. First matching rule wins (substring match on the CSV header's device / api / tier). --threshold on the command line overrides everything. Every rule needs a 'why' backed by measured noise (docs/perf/README.md).",
+  "default": 0.05,
+  "rules": [
+    {
+      "device": "Apple",
+      "threshold": 0.08,
+      "why": "M5 Max frame times are < 3 ms; two identical High runs differed by up to 4.9% (lake), so 5% would false-alarm."
+    }
+  ]
+}

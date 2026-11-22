@@ -17,6 +17,8 @@ namespace MineEmbers.Boot
         readonly FrameTiming[] _ft = new FrameTiming[1];
         double _cpu, _gpu;
         GUIStyle _box, _label, _button;
+        string _hudText = "";
+        float _hudNext;
 
         void Update()
         {
@@ -29,6 +31,16 @@ namespace MineEmbers.Boot
             if (FrameTimingManager.GetLatestTimings(1, _ft) > 0)
             {
                 _cpu = Lerp(_cpu, _ft[0].cpuFrameTime); _gpu = Lerp(_gpu, _ft[0].gpuFrameTime);
+            }
+            // IMGUI's Layout event allocates every frame; only the settings window uses GUILayout.
+            useGUILayout = _open;
+            // Rebuild the HUD string 4x per second instead of every frame (garbage -> GC hitches).
+            if (_hud && Time.unscaledTime >= _hudNext)
+            {
+                _hudNext = Time.unscaledTime + 0.25f;
+                string gpu = _gpu > 0 ? $"{_gpu:0.0} ms" : "n/a";
+                _hudText = $"CPU {_cpu:0.0} ms   GPU {gpu}\n{SystemInfo.graphicsDeviceType} · {QualityTiers.Current} ({QualityTiers.Mode})\n" +
+                           $"shadowed lights {TierLightManager.ShadowedCount}   [Esc] settings  [F3] HUD";
             }
         }
 
@@ -62,10 +74,7 @@ namespace MineEmbers.Boot
             }
             if (_hud)
             {
-                string gpu = _gpu > 0 ? $"{_gpu:0.0} ms" : "n/a";
-                GUI.Box(new Rect(10, 10, 330, 76),
-                    $"CPU {_cpu:0.0} ms   GPU {gpu}\n{SystemInfo.graphicsDeviceType} · {QualityTiers.Current} ({QualityTiers.Mode})\n" +
-                    $"shadowed lights {TierLightManager.ShadowedCount}   [Esc] settings  [F3] HUD", _box);
+                GUI.Box(new Rect(10, 10, 330, 76), _hudText, _box);
             }
             if (!_open) return;
 

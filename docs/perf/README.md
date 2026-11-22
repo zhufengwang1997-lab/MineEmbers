@@ -40,7 +40,7 @@
 
 1. GSC 消除了入口两帧 ~71 / ~48 ms 和熔炉 ~20 ms 的 PSO 编译卡顿，入口 1% Low 提升约 60%。
 2. 代价是启动多 0.9 秒，应放在加载画面里。
-3. 地下湖偶发一个 17–26 ms 的帧（6 次中 3 次，有无 GSC 都有），不是 PSO，原因待查（候选：反射探针、粒子系统首帧）。
+3. 地下湖偶发一个 12–26 ms 的帧（约每两次运行一次，有无 GSC 都有）。已排除 PSO、GPU、场景位置和 GC，只在 CPU 侧，见 [CASE-08](../cases/CASE-08-lake-hitch-and-runner-garbage.md)。
 4. 实验第一次得到的结论是“GSC 让峰值更糟（1150 vs 1020 ms）”——那是测量工具的错误，见 [CASE-07](../cases/CASE-07-frame-timing-double-count.md)。
 
 ## 噪声与回归阈值
@@ -52,7 +52,16 @@
   - Mac（帧时间 < 3 ms）：阈值 8%，并且要求连续两次运行都超阈值才报警；
   - GTX 1070 Ti（预计帧时间 5–15 ms）：先用 5%，拿到 3 次重复运行的噪声后再定；
   - 阈值按“平台 × 档位”记录在本页，修改时写明依据。
+- 已落地：阈值写在 `Packages/com.zfw.perfrunner/Tools~/thresholds.json`，按设备 / API / 档位匹配，每条规则必须写明依据；`compare.py` 不带 `--threshold` 时自动选用并打印来源。目前规则：Apple → 8%，其余 → 5%。
+- 实测：修复后两次相同的 High 运行（Mac）差异 +1.7% / +2.3% / +3.6%，在 8% 内通过。
 - 回归记录见 [regressions.md](regressions.md)。
+
+## CSV 格式
+
+`frame,zone,cpu_ms,gpu_ms,draw_calls,setpass_calls,gfx_mem_mb,gc`
+
+- `cpu_ms` / `gpu_ms` 为空：这一帧没有新的已完成帧时间（CASE-07），分析工具按缺失值处理。
+- `gc`：这一帧发生的 GC 次数（CASE-08）。PerfRunner 本身每帧零分配，所有格式化在采集结束后进行。
 
 ## 待补
 

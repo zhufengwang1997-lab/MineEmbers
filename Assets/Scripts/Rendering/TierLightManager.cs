@@ -20,6 +20,12 @@ namespace MineEmbers.Rendering
         float _next;
         readonly List<(float score, TorchLight t)> _scratch = new List<(float, TorchLight)>();
 
+        sealed class ByScoreDesc : IComparer<(float score, TorchLight t)>
+        {
+            public static readonly ByScoreDesc Instance = new ByScoreDesc();
+            public int Compare((float score, TorchLight t) a, (float score, TorchLight t) b) => b.score.CompareTo(a.score);
+        }
+
         void OnEnable() { QualityTiers.TierChanged += OnTier; }
         void OnDisable() { QualityTiers.TierChanged -= OnTier; }
         void OnTier(Tier _) => _next = 0;
@@ -44,7 +50,7 @@ namespace MineEmbers.Rendering
                 float score = t.shadowPriority * (0.5f + facing) / (1f + dist);
                 _scratch.Add((score, t));
             }
-            _scratch.Sort((a, b) => b.score.CompareTo(a.score));
+            _scratch.Sort(ByScoreDesc.Instance);  // cached comparer: Sort(Comparison) allocates a wrapper each call
             ShadowedCount = 0;
             for (int i = 0; i < _scratch.Count; i++)
             {

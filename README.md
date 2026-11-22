@@ -27,7 +27,7 @@ docs/                   caps/ perf/ cases/ captures/ —— 能力报告、性�
 python3 tools/test_tools.py
 
 # 性能对比：退出码 0 = 通过，1 = 回退，2 = 条件不一致
-python3 "Packages/com.zfw.perfrunner/Tools~/compare.py" base.csv new.csv -o report.html --threshold 0.05
+python3 "Packages/com.zfw.perfrunner/Tools~/compare.py" base.csv new.csv -o report.html   # 阈值按平台自动选（Tools~/thresholds.json），--threshold 可覆盖
 
 # 能力矩阵
 python3 "Packages/com.zfw.gpucaps/Tools~/caps_merge.py" docs/caps/*.json -o docs/caps/matrix.html

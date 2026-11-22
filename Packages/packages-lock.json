@@ -177,7 +177,7 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.zfw.gpucaps": "0.1.0"
+        "com.zfw.gpucaps": "0.2.0"
       }
     },
     "com.zfw.qualitytiers": {
@@ -185,7 +185,7 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.zfw.gpucaps": "0.1.0",
+        "com.zfw.gpucaps": "0.2.0",
         "com.unity.render-pipelines.universal": "17.3.0"
       }
     },

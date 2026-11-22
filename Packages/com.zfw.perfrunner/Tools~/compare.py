@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """PerfRunner CSV comparison (FR-PR-04).
 
-    compare.py <baseline.csv> <new.csv> -o report.html [--threshold 0.05]
+    compare.py <baseline.csv> <new.csv> -o report.html [--threshold 0.05] [--thresholds file.json]
+
+Without --threshold the value comes from thresholds.json (next to this script): the first rule whose
+device / api / tier substrings match the baseline header wins, else "default". Thresholds are per
+platform because run-to-run noise is: a 1.5 ms frame on an M5 Max jitters more than a 12 ms frame.
 
 Exit codes:
     0  no regression
@@ -13,6 +17,8 @@ Standard library only, so it runs on the Windows test box without pip.
 from __future__ import annotations
 
 import argparse
+import os
+import json
 import csv
 import html
 import math
@@ -158,12 +164,30 @@ def report(base: Run, new: Run, rows, regressed: bool, threshold: float) -> str:
             f"<title>Perf Compare</title><style>{CSS}</style><h1>性能对比</h1>{head}{verdict}{table}<h2>GPU 帧时间曲线</h2>{legend}{charts}")
 
 
+DEFAULT_THRESHOLDS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "thresholds.json")
+
+
+def resolve_threshold(meta: dict, path: str = DEFAULT_THRESHOLDS) -> tuple[float, str]:
+    """(threshold, source description) for a run's header metadata."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            cfg = json.load(f)
+    except OSError:
+        return 0.05, "built-in default (no thresholds.json)"
+    for rule in cfg.get("rules", []):
+        keys = [k for k in ("device", "api", "tier") if k in rule]
+        if keys and all(rule[k].lower() in meta.get(k, "").lower() for k in keys):
+            return float(rule["threshold"]), "rule " + ", ".join(f"{k}~{rule[k]}" for k in keys)
+    return float(cfg.get("default", 0.05)), "default"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("baseline")
     ap.add_argument("new")
     ap.add_argument("-o", "--out", default="report.html")
-    ap.add_argument("--threshold", type=float, default=0.05)
+    ap.add_argument("--threshold", type=float, default=None, help="override; otherwise from thresholds.json")
+    ap.add_argument("--thresholds", default=DEFAULT_THRESHOLDS, help="rules file (default: next to this script)")
     a = ap.parse_args(argv)
 
     try:
@@ -177,6 +201,12 @@ def main(argv=None) -> int:
         for k in mismatch:
             print(f"refuse: {k} differs: {base.meta.get(k)!r} vs {new.meta.get(k)!r}", file=sys.stderr)
         return 2
+
+    if a.threshold is None:
+        a.threshold, src = resolve_threshold(base.meta, a.thresholds)
+    else:
+        src = "--threshold"
+    print(f"threshold {a.threshold:.0%} ({src})")
 
     rows, regressed = [], False
     for z in base.zone_order + [z for z in new.zone_order if z not in base.zones]:

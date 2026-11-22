@@ -61,6 +61,23 @@ class CompareTests(unittest.TestCase):
         p = os.path.join(self.d, "slow.csv"); write_csv(p, 1.10)
         self.assertEqual(self.run_cmp(p, "--threshold", "0.2"), 0)
 
+    def test_platform_threshold_apple(self):
+        # 6% slower: within the Apple 8% rule, so it passes...
+        b = os.path.join(self.d, "mb.csv"); write_csv(b, device="Apple M5 Max")
+        n = os.path.join(self.d, "mn.csv"); write_csv(n, 1.06, device="Apple M5 Max")
+        self.assertEqual(compare.main([b, n, "-o", self.out]), 0)
+        # ...but the same 6% fails on the NVIDIA default (5%), and an explicit flag still overrides.
+        p = os.path.join(self.d, "n6.csv"); write_csv(p, 1.06)
+        self.assertEqual(self.run_cmp(p), 1)
+        self.assertEqual(compare.main([b, n, "-o", self.out, "--threshold", "0.03"]), 1)
+
+    def test_threshold_rules_file(self):
+        cfg = os.path.join(self.d, "t.json")
+        with open(cfg, "w") as f:
+            json.dump({"default": 0.5, "rules": [{"device": "GTX", "tier": "low", "threshold": 0.01}]}, f)
+        self.assertEqual(compare.resolve_threshold({"device": "NVIDIA GeForce GTX 1070 Ti", "tier": "low"}, cfg)[0], 0.01)
+        self.assertEqual(compare.resolve_threshold({"device": "NVIDIA GeForce GTX 1070 Ti", "tier": "high"}, cfg)[0], 0.5)
+
     def test_device_mismatch_refused(self):  # TC-07
         p = os.path.join(self.d, "mac.csv"); write_csv(p, device="Apple M5 Max")
         self.assertEqual(self.run_cmp(p), 2)
