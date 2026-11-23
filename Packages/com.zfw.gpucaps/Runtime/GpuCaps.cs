@@ -50,6 +50,7 @@ namespace Zfw.GpuCaps
 
             FillUnity(r);
             if (string.IsNullOrEmpty(r.os)) r.os = SystemInfo.operatingSystem;
+            FillUpscalers(r);
             return r;
         }
 
@@ -71,6 +72,23 @@ namespace Zfw.GpuCaps
             r.features.meshShader = new Feature(Feature.Unsupported, "unknown (no native plugin)");
             r.features.shaderModel = new Feature($"shaderLevel {SystemInfo.graphicsShaderLevel}", "SystemInfo");
             return r;
+        }
+
+        /// <summary>FR-UP-05 (schema 2): which upscaler families this device can run, from hardware/OS facts.</summary>
+        static void FillUpscalers(GpuCapsReport r)
+        {
+            var api = SystemInfo.graphicsDeviceType;
+            string name = SystemInfo.graphicsDeviceName ?? "";
+            bool windows = Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor;
+            bool mac = Application.platform == RuntimePlatform.OSXPlayer || Application.platform == RuntimePlatform.OSXEditor;
+            bool nvidia = SystemInfo.graphicsDeviceVendorID == Vendors.NVIDIA;
+            bool rtx = nvidia && Regex.IsMatch(name, @"\bRTX\b", RegexOptions.IgnoreCase);
+            bool dxOrVk = api == GraphicsDeviceType.Direct3D12 || api == GraphicsDeviceType.Direct3D11 || api == GraphicsDeviceType.Vulkan;
+            r.features.dlss = Feature.From(windows && rtx && dxOrVk, $"heuristic: Windows={windows} RTX={rtx} api={api}; NVIDIA module not queried here");
+            // FSR 1 is a pair of pixel shaders (EASU + RCAS): any GPU Unity renders on
+            r.features.fsr = new Feature(Feature.Supported, "FSR1 (shader-only, URP built-in); FSR2/3 not checked");
+            bool appleGpu = SystemInfo.graphicsDeviceVendorID == Vendors.Apple || name.StartsWith("Apple", StringComparison.OrdinalIgnoreCase);
+            r.features.metalfx = Feature.From(mac && api == GraphicsDeviceType.Metal && appleGpu, $"heuristic: macOS={mac} Metal={api == GraphicsDeviceType.Metal} AppleGPU={appleGpu} (MetalFX needs macOS 13+)");
         }
 
         static void FillUnity(GpuCapsReport r)

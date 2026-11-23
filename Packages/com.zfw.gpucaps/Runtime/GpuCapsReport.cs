@@ -7,7 +7,7 @@ namespace Zfw.GpuCaps
     [Serializable]
     public class GpuCapsReport
     {
-        public const int CurrentSchema = 1;
+        public const int CurrentSchema = 2;   // 2: features.dlss / fsr / metalfx (project 3, FR-UP-05)
 
         public int schema = CurrentSchema;
         public string api;
@@ -42,7 +42,9 @@ namespace Zfw.GpuCaps
     public class FeatureSet
     {
         public Feature bindless, raytracing, vrs, meshShader, shaderModel;
-        // Project 3 adds: dlss, fsr, metalfx (schema stays 1 while only adding optional fields).
+        /// <summary>Upscaler availability (schema 2). Hardware/OS checks only: the upscaler backend still asks its own
+        /// SDK at start-up (e.g. the NVIDIA module's IsFeatureAvailable) before it is used.</summary>
+        public Feature dlss, fsr, metalfx;
     }
 
     [Serializable]

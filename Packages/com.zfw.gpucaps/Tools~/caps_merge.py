@@ -14,7 +14,7 @@ import html
 import json
 import sys
 
-SUPPORTED_SCHEMA = {1}
+SUPPORTED_SCHEMA = {1, 2}
 
 
 def flatten(rep: dict) -> dict[str, tuple[str, str]]:
