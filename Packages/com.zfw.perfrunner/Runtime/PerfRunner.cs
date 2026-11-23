@@ -11,9 +11,12 @@ using Zfw.GpuCaps;
 namespace Zfw.PerfRunner
 {
     /// <summary>
-    /// -perfrun [-perf-out dir] [-perf-seconds 20] [-perf-warmup 3]
+    /// -perfrun [-perf-out dir] [-perf-seconds 20] [-perf-warmup 3] [-upscaler=STP] [-quality=Quality]
     /// Flies the main camera through every <see cref="PerfZone"/>, records one CSV row per frame, then quits.
     /// Requires Player Settings > Frame Timing Stats for gpu_ms (otherwise the column is empty).
+    /// -upscaler= / -quality= are only recorded here (header, file name); the game's own upscaler selector reads
+    /// the same arguments and applies them. The package does not reference any upscaler code: the game fills
+    /// <see cref="UpscalerInfo"/> and <see cref="UpscaleMs"/> (FR-VB-04).
     /// </summary>
     public class PerfRunner : MonoBehaviour
     {
@@ -22,6 +25,11 @@ namespace Zfw.PerfRunner
         public static event Action Started;
         /// <summary>Path of the CSV once written.</summary>
         public static event Action<string> Finished;
+
+        /// <summary>Optional: describes the active upscaler for the CSV header, e.g. "STP/Quality 1707x960".</summary>
+        public static Func<string> UpscalerInfo;
+        /// <summary>Optional: GPU time of the upscale pass in the last completed frame, NaN when unknown.</summary>
+        public static Func<float> UpscaleMs;
 
         public float secondsPerZone = 20f;
         public float warmupSeconds = 3f;
@@ -51,6 +59,7 @@ namespace Zfw.PerfRunner
         {
             public int zone, draws, setpass, memMb, gc;
             public float cpu, gpu;  // NaN = no new completed frame this row
+            public float upscale;   // NaN = not provided
         }
         readonly FrameTiming[] _ft = new FrameTiming[1];
 
@@ -128,6 +137,7 @@ namespace Zfw.PerfRunner
                     samples.Add(new Sample
                     {
                         zone = zi, cpu = cpu, gpu = gpu, gc = gcThisFrame,
+                        upscale = UpscaleMs != null ? UpscaleMs() : float.NaN,
                         draws = (int)_draws.LastValue, setpass = (int)_setpass.LastValue,
                         memMb = (int)(_gfxMem.LastValue / (1024 * 1024)),
                     });
@@ -154,12 +164,12 @@ namespace Zfw.PerfRunner
         {
             var sb = new StringBuilder(64 + samples.Count * 40);
             sb.Append(Header()).Append('\n');
-            sb.Append("frame,zone,cpu_ms,gpu_ms,draw_calls,setpass_calls,gfx_mem_mb,gc\n");
+            sb.Append("frame,zone,cpu_ms,gpu_ms,draw_calls,setpass_calls,gfx_mem_mb,gc,upscale_ms\n");
             for (int i = 0; i < samples.Count; i++)
             {
                 var x = samples[i];
                 sb.Append(i).Append(',').Append(zones[x.zone].zoneId).Append(',').Append(F(x.cpu)).Append(',').Append(F(x.gpu))
-                  .Append(',').Append(x.draws).Append(',').Append(x.setpass).Append(',').Append(x.memMb).Append(',').Append(x.gc).Append('\n');
+                  .Append(',').Append(x.draws).Append(',').Append(x.setpass).Append(',').Append(x.memMb).Append(',').Append(x.gc).Append(',').Append(F(x.upscale)).Append('\n');
             }
             return sb.ToString();
         }
@@ -177,10 +187,20 @@ namespace Zfw.PerfRunner
             return t != null ? t.Substring(6).ToLowerInvariant() : "auto";
         }
 
+        static string ArgValue(string prefix)
+        {
+            var t = Environment.GetCommandLineArgs().FirstOrDefault(a => a.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+            return t?.Substring(prefix.Length);
+        }
+
+        static string Upscaler() => ArgValue("-upscaler=") ?? "auto";
+        static string Quality() => ArgValue("-quality=") ?? "auto";
+
         static string Header()
         {
             var caps = GpuCaps.GpuCaps.Current;
             return $"# commit={Commit()} api={SystemInfo.graphicsDeviceType} device=\"{caps.gpu.name}\" tier={Tier()} " +
+                   $"upscaler={Upscaler()} quality={Quality()} active=\"{UpscalerInfo?.Invoke() ?? "n/a"}\" " +
                    $"unity={Application.unityVersion} date={DateTime.Now:yyyy-MM-ddTHH:mm}";
         }
 
@@ -188,7 +208,7 @@ namespace Zfw.PerfRunner
         {
             string dir = string.IsNullOrEmpty(outDir) ? Application.persistentDataPath : outDir;
             Directory.CreateDirectory(dir);
-            string path = Path.Combine(dir, $"perf_{Commit()}_{SystemInfo.graphicsDeviceType}_{Tier()}.csv");
+            string path = Path.Combine(dir, $"perf_{Commit()}_{SystemInfo.graphicsDeviceType}_{Tier()}_{Upscaler()}-{Quality()}.csv");
             File.WriteAllText(path, csv);
             Debug.Log($"[PerfRunner] wrote {path}");
             return path;
