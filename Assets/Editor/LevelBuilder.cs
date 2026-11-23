@@ -19,7 +19,7 @@ namespace MineEmbers.EditorTools
     ///   Unity -batchmode -quit -projectPath . -executeMethod MineEmbers.EditorTools.LevelBuilder.Build
     /// Art pass later replaces the primitives; gameplay/perf markers stay.
     /// </summary>
-    public static class LevelBuilder
+    public static partial class LevelBuilder
     {
         const string ScenePath = "Assets/Scenes/Mine.unity";
         const string ArtDir = "Assets/Art/Greybox";
@@ -34,6 +34,7 @@ namespace MineEmbers.EditorTools
             _rng = new System.Random(20270104);
             _lights = 0;
             CreateMaterials();
+            InitArt();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             RenderSettings.skybox = null;
@@ -46,7 +47,7 @@ namespace MineEmbers.EditorTools
             int a = BuildEntrance(level);
             int b = BuildLake(level);
             int c = BuildFurnace(level);
-            Debug.Log($"[LevelBuilder] lights: entrance={a} lake={b} furnace={c} total={_lights}");
+            Debug.Log($"[LevelBuilder] lights: entrance={a} lake={b} furnace={c} total={_lights}; art={_art} pieces={_pieces}");
 
             BuildSystems();
             BuildPlayerAndCamera();
@@ -73,16 +74,27 @@ namespace MineEmbers.EditorTools
             Room(z, "Connector", -3, 3, 60, 75, 5, openSouth: true, openNorth: true);
             for (float zz = 3; zz < 74; zz += 6)
             {
-                Box(z, "Post", new Vector3(-2.6f, 2.2f, zz), new Vector3(0.35f, 4.4f, 0.35f), "Wood");
-                Box(z, "Post", new Vector3(2.6f, 2.2f, zz), new Vector3(0.35f, 4.4f, 0.35f), "Wood");
-                Box(z, "Beam", new Vector3(0, 4.55f, zz), new Vector3(5.6f, 0.4f, 0.4f), "Wood");
+                var posts = new[] {
+                    Box(z, "Post", new Vector3(-2.6f, 2.2f, zz), new Vector3(0.35f, 4.4f, 0.35f), "Wood"),
+                    Box(z, "Post", new Vector3(2.6f, 2.2f, zz), new Vector3(0.35f, 4.4f, 0.35f), "Wood"),
+                    Box(z, "Beam", new Vector3(0, 4.55f, zz), new Vector3(5.6f, 0.4f, 0.4f), "Wood") };
+                if (_art) { foreach (var p in posts) Hide(p); TimberFrame(z, zz, 2.6f, 4.35f); }
             }
-            Box(z, "Rail_L", new Vector3(-0.6f, 0.06f, 37), new Vector3(0.08f, 0.12f, 74), "Iron", collider: false);
-            Box(z, "Rail_R", new Vector3(0.6f, 0.06f, 37), new Vector3(0.08f, 0.12f, 74), "Iron", collider: false);
-            for (float zz = 1; zz < 74; zz += 0.9f)
-                Box(z, "Sleeper", new Vector3(0, 0.03f, zz), new Vector3(1.8f, 0.06f, 0.22f), "Wood", collider: false);
-            Minecart(z, new Vector3(0, 0, 18));
-            Minecart(z, new Vector3(0, 0, 44));
+            if (_art)
+            {
+                RailTrack(z, 0, 74);
+                ArtMinecart(z, new Vector3(0, 0, 18), "Mine_Cart_AB_grp");
+                ArtMinecart(z, new Vector3(0, 0, 44), "Mine_Cart_CB_grp");
+            }
+            else
+            {
+                Box(z, "Rail_L", new Vector3(-0.6f, 0.06f, 37), new Vector3(0.08f, 0.12f, 74), "Iron", collider: false);
+                Box(z, "Rail_R", new Vector3(0.6f, 0.06f, 37), new Vector3(0.08f, 0.12f, 74), "Iron", collider: false);
+                for (float zz = 1; zz < 74; zz += 0.9f)
+                    Box(z, "Sleeper", new Vector3(0, 0.03f, zz), new Vector3(1.8f, 0.06f, 0.22f), "Wood", collider: false);
+                Minecart(z, new Vector3(0, 0, 18));
+                Minecart(z, new Vector3(0, 0, 44));
+            }
             for (int i = 0; i < 6; i++)
                 Box(z, "Crate", new Vector3(i % 2 == 0 ? -2f : 2f, 0.4f, 9 + i * 9.5f), Vector3.one * 0.8f, "Wood", rotY: R(-20, 20));
             ScatterRocks(z, -3, 3, 0, 75, 5, 40);
@@ -107,10 +119,20 @@ namespace MineEmbers.EditorTools
             Room(z, "Cavern", x0, x1, z0, z1, h, openSouth: true, openNorth: true, floor: false);
             // Floor ring around a sunken basin.
             float lx0 = -15, lx1 = 15, lz0 = 88, lz1 = 112;
-            Box(z, "Floor_S", new Vector3(0, -0.25f, (z0 + lz0) / 2), new Vector3(x1 - x0, 0.5f, lz0 - z0), "Rock");
-            Box(z, "Floor_N", new Vector3(0, -0.25f, (lz1 + z1) / 2), new Vector3(x1 - x0, 0.5f, z1 - lz1), "Rock");
-            Box(z, "Floor_W", new Vector3((x0 + lx0) / 2, -0.25f, 100), new Vector3(lx0 - x0, 0.5f, lz1 - lz0), "Rock");
-            Box(z, "Floor_E", new Vector3((lx1 + x1) / 2, -0.25f, 100), new Vector3(x1 - lx1, 0.5f, lz1 - lz0), "Rock");
+            Hide(Box(z, "Floor_S", new Vector3(0, -0.25f, (z0 + lz0) / 2), new Vector3(x1 - x0, 0.5f, lz0 - z0), "Rock"));
+            Hide(Box(z, "Floor_N", new Vector3(0, -0.25f, (lz1 + z1) / 2), new Vector3(x1 - x0, 0.5f, z1 - lz1), "Rock"));
+            Hide(Box(z, "Floor_W", new Vector3((x0 + lx0) / 2, -0.25f, 100), new Vector3(lx0 - x0, 0.5f, lz1 - lz0), "Rock"));
+            Hide(Box(z, "Floor_E", new Vector3((lx1 + x1) / 2, -0.25f, 100), new Vector3(x1 - lx1, 0.5f, lz1 - lz0), "Rock"));
+            if (_art)
+            {
+                CaveFloorRect(z, x0, x1, z0, lz0); CaveFloorRect(z, x0, x1, lz1, z1);
+                CaveFloorRect(z, x0, lx0, lz0, lz1); CaveFloorRect(z, lx1, x1, lz0, lz1);
+                // Shore: rock ledges drop from the floor into the basin on all four sides.
+                Ledge(z, new Vector3(lx0, 0, lz0), new Vector3(lx1, 0, lz0), Vector3.forward, 2.4f);
+                Ledge(z, new Vector3(lx0, 0, lz1), new Vector3(lx1, 0, lz1), Vector3.back, 2.4f);
+                Ledge(z, new Vector3(lx0, 0, lz0), new Vector3(lx0, 0, lz1), Vector3.right, 2.4f);
+                Ledge(z, new Vector3(lx1, 0, lz0), new Vector3(lx1, 0, lz1), Vector3.left, 2.4f);
+            }
             Box(z, "Basin", new Vector3(0, -2.2f, 100), new Vector3(lx1 - lx0, 0.4f, lz1 - lz0), "RockDark");
             var water = Box(z, "Water", new Vector3(0, -0.35f, 100), new Vector3(lx1 - lx0, 0.02f, lz1 - lz0), "Water", collider: false);
             // Invisible wall so the player cannot walk into the lake.
@@ -169,11 +191,18 @@ namespace MineEmbers.EditorTools
             float x0 = -22, x1 = 22, z0 = 140, z1 = 200, h = 20;
             Room(z, "Hall", x0, x1, z0, z1, h, openSouth: true, openNorth: false, floor: false);
             float cz0 = 160, cz1 = 166;
-            Box(z, "Floor_S", new Vector3(0, -0.25f, (z0 + cz0) / 2), new Vector3(x1 - x0, 0.5f, cz0 - z0), "Rock");
-            Box(z, "Floor_N", new Vector3(0, -0.25f, (cz1 + z1) / 2), new Vector3(x1 - x0, 0.5f, z1 - cz1), "Rock");
+            Hide(Box(z, "Floor_S", new Vector3(0, -0.25f, (z0 + cz0) / 2), new Vector3(x1 - x0, 0.5f, cz0 - z0), "Rock"));
+            Hide(Box(z, "Floor_N", new Vector3(0, -0.25f, (cz1 + z1) / 2), new Vector3(x1 - x0, 0.5f, z1 - cz1), "Rock"));
+            if (_art)
+            {
+                CaveFloorRect(z, x0, x1, z0, cz0); CaveFloorRect(z, x0, x1, cz1, z1);
+                Ledge(z, new Vector3(x0, 0, cz0), new Vector3(x1, 0, cz0), Vector3.forward, 2.6f);
+                Ledge(z, new Vector3(x0, 0, cz1), new Vector3(x1, 0, cz1), Vector3.back, 2.6f);
+                WoodBridge(z, 163, cz1 - cz0 + 1);
+            }
             Box(z, "ChannelBed", new Vector3(0, -2.5f, 163), new Vector3(x1 - x0, 0.5f, cz1 - cz0), "RockDark");
             Box(z, "Lava", new Vector3(0, -1.2f, 163), new Vector3(x1 - x0, 0.05f, cz1 - cz0), "Lava", collider: false);
-            Box(z, "Bridge", new Vector3(0, -0.15f, 163), new Vector3(4.5f, 0.3f, cz1 - cz0 + 1), "Stone");
+            Hide(Box(z, "Bridge", new Vector3(0, -0.15f, 163), new Vector3(4.5f, 0.3f, cz1 - cz0 + 1), "Stone"));
             Box(z, "Rail_W", new Vector3(-2.2f, 0.5f, 163), new Vector3(0.2f, 1f, cz1 - cz0 + 1), "Iron");
             Box(z, "Rail_E", new Vector3(2.2f, 0.5f, 163), new Vector3(0.2f, 1f, cz1 - cz0 + 1), "Iron");
             // Invisible guards on both sides of the bridge keep the player out of the lava.
@@ -195,7 +224,11 @@ namespace MineEmbers.EditorTools
                 Box(z, "Crucible_Melt", new Vector3(sx, 2.42f, 180), new Vector3(2.4f, 0.05f, 2.4f), "Lava", collider: false);
             }
             for (int i = 0; i < 4; i++)
-                Box(z, "Pillar", new Vector3(i < 2 ? -16 : 16, h / 2, i % 2 == 0 ? 152 : 178), new Vector3(2.5f, h, 2.5f), "Stone");
+            {
+                var pos = new Vector3(i < 2 ? -16 : 16, h / 2, i % 2 == 0 ? 152 : 178);
+                var pillar = Box(z, "Pillar", pos, new Vector3(2.5f, h, 2.5f), "Stone");
+                if (_art) { Hide(pillar); RockColumn(z, new Vector3(pos.x, 0, pos.z), h); }
+            }
             ScatterRocks(z, x0, x1, z0, z1, h, 50);
 
             // Lights: furnace mouth + crucibles, lava glow along the channel, braziers, wall torches.
@@ -276,6 +309,7 @@ namespace MineEmbers.EditorTools
             var cc = player.AddComponent<CharacterController>();
             cc.height = 2; cc.radius = 0.4f; cc.center = Vector3.zero;
             var pc = player.AddComponent<PlayerController>();
+            if (_art) AttachArmature(player, pc);
             // A small lantern the miner carries, so dark stretches are readable.
             Point(player.transform, "CarryLantern", player.transform.position + new Vector3(0.35f, 0.4f, 0.3f), new Color(1f, 0.7f, 0.45f), 1.2f, 6f, priority: 0.5f, flicker: 0.08f)
                 .transform.SetParent(player.transform, true);
@@ -395,6 +429,10 @@ namespace MineEmbers.EditorTools
             Box(g, "Wall_E", new Vector3(x1 + t / 2, h / 2, cz), new Vector3(t, h, d), "Rock");
             EndWall(g, "Wall_S", z0 - t / 2, x0, x1, h, openSouth, door, doorH, t);
             EndWall(g, "Wall_N", z1 + t / 2, x0, x1, h, openNorth, door, doorH, t);
+            if (!_art) return;
+            foreach (var r in g.GetComponentsInChildren<MeshRenderer>()) Hide(r.gameObject);
+            if (w <= door + 0.01f) DressTunnel(g, x0, x1, z0, z1, h, closedSouth: !openSouth);
+            else DressCave(g, x0, x1, z0, z1, h, doorSouth: openSouth, doorNorth: openNorth);
         }
 
         /// <summary>open = this end connects to a neighbour: narrow tunnels stay fully open, wide rooms get a doorway.</summary>
@@ -420,13 +458,41 @@ namespace MineEmbers.EditorTools
             {
                 bool west = _rng.Next(2) == 0;
                 float x = west ? x0 + R(0.1f, 0.6f) : x1 - R(0.1f, 0.6f);
-                var go = Box(g, "Rock", new Vector3(x, R(0, h * 0.9f), R(z0 + 1, z1 - 1)), new Vector3(R(0.6f, 1.6f), R(0.6f, 2.2f), R(0.8f, 2.5f)), _rng.Next(3) == 0 ? "RockDark" : "Rock", collider: false);
-                go.transform.rotation = Quaternion.Euler(R(-25, 25), R(0, 360), R(-25, 25));
+                var pos = new Vector3(x, R(0, h * 0.9f), R(z0 + 1, z1 - 1));
+                var size = new Vector3(R(0.6f, 1.6f), R(0.6f, 2.2f), R(0.8f, 2.5f));
+                bool dark = _rng.Next(3) == 0;
+                var rot = Quaternion.Euler(R(-25, 25), R(0, 360), R(-25, 25));  // same draws in both modes
+                if (_art)
+                {
+                    // Art walls already have relief; instead put a boulder at the wall foot when there is floor.
+                    if (x1 - x0 <= 6.01f || i % 2 == 1) continue;
+                    var foot = new Vector3(west ? x0 + 1.2f : x1 - 1.2f, 3f, pos.z);
+                    Physics.SyncTransforms();
+                    if (Physics.Raycast(foot, Vector3.down, out var hit, 4f) && hit.point.y > -0.3f && !hit.collider.name.Contains("Guard"))
+                        Boulder(g, new Vector3(foot.x, 0, foot.z), AR(0.7f, 1.3f));
+                    continue;
+                }
+                var go = Box(g, "Rock", pos, size, dark ? "RockDark" : "Rock", collider: false);
+                go.transform.rotation = rot;
             }
         }
 
         static void Spike(Transform parent, Vector3 basePos, float height, bool up)
         {
+            if (_art)
+            {
+                ArtSpike(parent, basePos, height, up);
+                if (up)  // keep the greybox base segment as an invisible collider
+                {
+                    var col = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                    col.name = "StalagmiteCollider";
+                    col.transform.SetParent(parent, false);
+                    col.transform.position = basePos + Vector3.up * height / 6f;
+                    col.transform.localScale = new Vector3(height * 0.36f, height / 6f, height * 0.36f);
+                    Hide(col);
+                }
+                return;
+            }
             float r = height * 0.18f;
             int segs = 3;
             for (int i = 0; i < segs; i++)
@@ -610,7 +676,7 @@ namespace MineEmbers.EditorTools
             Lit(lit, "Iron", new Color(0.25f, 0.24f, 0.24f), 0.45f, metallic: 0.85f);
             Lit(lit, "Player", new Color(0.55f, 0.45f, 0.35f), 0.3f);
             Lit(lit, "Water", new Color(0.01f, 0.03f, 0.045f), 0.96f);
-            Lit(lit, "Lava", new Color(0.2f, 0.05f, 0.01f), 0.6f, emission: new Color(1f, 0.32f, 0.06f) * 3f);
+            Lit(lit, "Lava", new Color(0.2f, 0.05f, 0.01f), 0.6f, emission: new Color(1f, 0.32f, 0.06f) * 1.6f);
             Lit(lit, "FurnaceGlow", Color.black, 0.5f, emission: new Color(1f, 0.45f, 0.12f) * 2.2f);
             Lit(lit, "Glow", new Color(0.3f, 0.2f, 0.1f), 0.4f, emission: new Color(1f, 0.65f, 0.3f) * 2.5f);
             Lit(lit, "Crystal", new Color(0.1f, 0.25f, 0.35f), 0.9f, emission: new Color(0.3f, 0.7f, 1f) * 2.2f);

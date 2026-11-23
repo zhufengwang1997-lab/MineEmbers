@@ -9,24 +9,36 @@ APP=Builds/Mac/MineEmbers.app/Contents/MacOS/MineEmbers
 METAL_CACHE="$(getconf DARWIN_USER_CACHE_DIR)/com.zfw.mineembers"
 RES="-screen-width 1920 -screen-height 1080 -screen-fullscreen 0"
 cold() { rm -rf "$METAL_CACHE"; }
+# Measurement hygiene (CASE-09): another Unity editor/build on this machine (e.g. a second project building
+# in parallel) steals CPU and shows up as scattered CPU-only 5-10 ms frames. Wait until none is running,
+# then log the load average next to the results.
+quiet() {
+  local waited=0
+  while pgrep -f "Unity.app/Contents/MacOS/Unity -batchmode" >/dev/null || pgrep -f "Unity.app/Contents/MacOS/Unity -projectPath" >/dev/null; do
+    [ $waited = 0 ] && echo "waiting: another Unity process is running ($(pgrep -fl 'Unity.app/Contents/MacOS/Unity' | grep -o 'projectPath [^ ]*' | head -1))"
+    waited=1; sleep 15
+  done
+  echo "load before $1: $(sysctl -n vm.loadavg)" | tee -a "$OUT/load.txt"
+}
 
 # 1) build without GSC files -> cold run, no warmup recording window
 mkdir -p out/gsc_stash; mv Assets/StreamingAssets/gsc_Metal_*.graphicsstate out/gsc_stash/ 2>/dev/null
 tools/unity.sh MineEmbers.EditorTools.BuildScript.BuildMac | tail -1
 for r in $(seq $REPS); do mkdir -p "$OUT/nogsc/r$r"
-  cold; $APP $RES -perfrun -tier=high -perf-warmup 0 -perf-seconds 8 -perf-out "$OUT/nogsc/r$r" -logFile "$OUT/nogsc/r$r/log.txt" >/dev/null
+  quiet nogsc_r$r; cold; $APP $RES -perfrun -tier=high -perf-warmup 0 -perf-seconds 8 -perf-out "$OUT/nogsc/r$r" -logFile "$OUT/nogsc/r$r/log.txt" >/dev/null
 done
 # 2) build with GSC files -> cold run again
 mv out/gsc_stash/gsc_Metal_*.graphicsstate Assets/StreamingAssets/
 tools/unity.sh MineEmbers.EditorTools.BuildScript.BuildMac | tail -1
 for r in $(seq $REPS); do mkdir -p "$OUT/gsc/r$r"
-  cold; $APP $RES -perfrun -tier=high -perf-warmup 0 -perf-seconds 8 -perf-out "$OUT/gsc/r$r" -logFile "$OUT/gsc/r$r/log.txt" >/dev/null
+  quiet gsc_r$r; cold; $APP $RES -perfrun -tier=high -perf-warmup 0 -perf-seconds 8 -perf-out "$OUT/gsc/r$r" -logFile "$OUT/gsc/r$r/log.txt" >/dev/null
   grep "\[Warmup\]" "$OUT/gsc/r$r/log.txt"
 done
 [ "$PART" = warmup ] && { echo SUITE_DONE; exit 0; }
 rm -rf "$OUT/tiers"; mkdir -p "$OUT/tiers"
 # 3) four tiers, normal warmup, after the shadow-atlas fix
-for t in low medium high ultra; do
+for t in ${TIERS:-low medium high ultra}; do
+  quiet $t
   $APP $RES -perfrun -tier=$t -perf-out "$OUT/tiers" -logFile "$OUT/tiers/log_$t.txt" >/dev/null
   echo "$t done; atlas warnings: $(grep -c 'Reduced additional' "$OUT/tiers/log_$t.txt")"
 done

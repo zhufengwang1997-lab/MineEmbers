@@ -4,15 +4,20 @@ using UnityEngine.InputSystem;
 namespace MineEmbers.Gameplay
 {
     /// <summary>
-    /// Minimal third-person controller (placeholder until Starter Assets): WASD/left stick to move,
-    /// mouse/right stick to orbit, Shift to run, Space to jump. Inputs are bound in code so the
-    /// prototype has no asset dependency.
+    /// Minimal third-person controller: WASD/left stick to move, mouse/right stick to orbit, Shift to run,
+    /// Space to jump. Inputs are bound in code (no asset dependency). If an Animator is assigned (the
+    /// Starter Assets armature), it drives that controller's parameters: Speed, MotionSpeed, Grounded,
+    /// Jump, FreeFall.
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public class PlayerController : MonoBehaviour
     {
         public float walkSpeed = 3.5f, runSpeed = 7f, jumpHeight = 1.1f, gravity = -18f;
         public Transform cameraRig;
+        public Animator animator;
+
+        static readonly int SpeedId = Animator.StringToHash("Speed"), MotionSpeedId = Animator.StringToHash("MotionSpeed"),
+            GroundedId = Animator.StringToHash("Grounded"), JumpId = Animator.StringToHash("Jump"), FreeFallId = Animator.StringToHash("FreeFall");
 
         CharacterController _cc;
         InputAction _move, _run, _jump;
@@ -46,13 +51,24 @@ namespace MineEmbers.Gameplay
             if (dir.sqrMagnitude > 0.001f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 12f * Time.deltaTime);
 
-            if (_cc.isGrounded)
+            bool grounded = _cc.isGrounded, jumped = false;
+            if (grounded)
             {
                 _vy = -1f;
-                if (!InputBlocked && _jump.WasPressedThisFrame()) _vy = Mathf.Sqrt(-2f * gravity * jumpHeight);
+                if (!InputBlocked && _jump.WasPressedThisFrame()) { _vy = Mathf.Sqrt(-2f * gravity * jumpHeight); jumped = true; }
             }
             _vy += gravity * Time.deltaTime;
             _cc.Move((dir * speed + Vector3.up * _vy) * Time.deltaTime);
+
+            if (animator)
+            {
+                Vector3 v = _cc.velocity; v.y = 0;
+                animator.SetFloat(SpeedId, v.magnitude, 0.1f, Time.deltaTime);
+                animator.SetFloat(MotionSpeedId, 1f);
+                animator.SetBool(GroundedId, grounded);
+                animator.SetBool(JumpId, jumped);
+                animator.SetBool(FreeFallId, !grounded && _vy < -2f);
+            }
         }
     }
 }
